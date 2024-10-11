@@ -10,6 +10,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactContext
+import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.EventDispatcher
@@ -22,7 +23,10 @@ import com.facebook.react.views.view.ReactViewGroup
 class AutoLayoutView(context: Context) : ReactViewGroup(context) {
     val alShadow = AutoLayoutShadow()
     var enableInstrumentation = false
+    var enableAutoLayoutInfo = false
     var disableAutoLayout = false
+    var autoLayoutId = -1
+    var preservedIndex = -1
 
     var pixelDensity = 1.0;
 
@@ -68,7 +72,11 @@ class AutoLayoutView(context: Context) : ReactViewGroup(context) {
             }
             positionSortedViews.sortBy { it.index }
             alShadow.offsetFromStart = if (alShadow.horizontal) left else top
-            alShadow.clearGapsAndOverlaps(positionSortedViews)
+            alShadow.clearGapsAndOverlaps(preservedIndex, positionSortedViews)
+
+            if (enableAutoLayoutInfo) {
+                emitAutoLayout(positionSortedViews)
+            }
         }
     }
 
@@ -154,5 +162,25 @@ class AutoLayoutView(context: Context) : ReactViewGroup(context) {
                 )
             )
         }
+    }
+    /** TODO: Check migration to Fabric */
+    private fun emitAutoLayout(sortedItems: Array<CellContainer>) {
+        val event: WritableMap = Arguments.createMap()
+        event.putInt("autoLayoutId", autoLayoutId)
+
+        val layoutsArray: WritableArray = Arguments.createArray()
+        for (cell in sortedItems) {
+            val cellMap: WritableMap = Arguments.createMap()
+            cellMap.putInt("key", cell.index)
+            cellMap.putDouble("y", cell.top / pixelDensity)
+            cellMap.putDouble("height", cell.height / pixelDensity)
+            layoutsArray.pushMap(cellMap)
+	}
+        event.putArray("layouts", layoutsArray)
+
+        val reactContext = context as ReactContext
+        reactContext
+                .getJSModule(RCTEventEmitter::class.java)
+                .receiveEvent(id, "onAutoLayout", event)
     }
 }

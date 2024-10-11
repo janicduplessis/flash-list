@@ -32,6 +32,7 @@ class AutoLayoutViewManager: ViewGroupManager<AutoLayoutView>(), AutoLayoutViewM
 
     override fun getExportedCustomDirectEventTypeConstants() = mutableMapOf(
         "onBlankAreaEvent" to mutableMapOf("registrationName" to "onBlankAreaEvent"),
+        "onAutoLayout" to mutableMapOf("registrationName", "onAutoLayout"),
     )
 
     @ReactProp(name = "horizontal")
@@ -42,6 +43,16 @@ class AutoLayoutViewManager: ViewGroupManager<AutoLayoutView>(), AutoLayoutViewM
     @ReactProp(name = "disableAutoLayout")
     override fun setDisableAutoLayout(view: AutoLayoutView, disableAutoLayout: Boolean) {
         view.disableAutoLayout = disableAutoLayout
+    }
+
+    @ReactProp(name = "autoLayoutId")
+    fun setAutoLayoutId(view: AutoLayoutView, autoLayoutId: Int) {
+        view.autoLayoutId = autoLayoutId
+    }
+
+    @ReactProp(name = "preservedIndex")
+    fun setPreservedIndex(view: AutoLayoutView, preservedIndex: Int) {
+        view.preservedIndex = preservedIndex
     }
 
     @ReactProp(name = "scrollOffset")
@@ -62,6 +73,11 @@ class AutoLayoutViewManager: ViewGroupManager<AutoLayoutView>(), AutoLayoutViewM
     @ReactProp(name = "enableInstrumentation")
     override fun setEnableInstrumentation(view: AutoLayoutView, enableInstrumentation: Boolean) {
         view.enableInstrumentation = enableInstrumentation
+    }
+
+    @ReactProp(name = "enableAutoLayoutInfo")
+    fun setEnableAutoLayoutInfo(view: AutoLayoutView, enableAutoLayoutInfo: Boolean) {
+        view.enableAutoLayoutInfo = enableAutoLayoutInfo
     }
 
     private fun convertToPixelLayout(dp: Double, density: Double): Int {

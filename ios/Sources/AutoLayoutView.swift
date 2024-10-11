@@ -12,6 +12,9 @@ import UIKit
     @objc(onBlankAreaEvent)
     var onBlankAreaEvent: RCTDirectEventBlock?
 
+    @objc(onAutoLayout)
+    var onAutoLayout: RCTDirectEventBlock?
+
     @objc public func setHorizontal(_ horizontal: Bool) {
         self.horizontal = horizontal
     }
@@ -32,8 +35,28 @@ import UIKit
         self.enableInstrumentation = enableInstrumentation
     }
 
+<<<<<<< HEAD
     @objc public func setDisableAutoLayout(_ disableAutoLayout: Bool) {
+=======
+    @objc func setEnableAutoLayoutInfo(_ enableAutoLayoutInfo: Bool) {
+        self.enableAutoLayoutInfo = enableAutoLayoutInfo
+    }
+
+    @objc func setDisableAutoLayout(_ disableAutoLayout: Bool) {
+>>>>>>> patch/master
         self.disableAutoLayout = disableAutoLayout
+    }
+
+    @objc func setAutoLayoutId(_ autoLayoutId: Int) {
+        self.autoLayoutId = autoLayoutId
+    }
+
+    @objc func setPreservedIndex(_ preservedIndex: Int) {
+        self.preservedIndex = preservedIndex
+    }
+
+    @objc func setRenderId(_ renderId: Int) {
+	setNeedsLayout()
     }
 
     private var horizontal = false
@@ -41,7 +64,10 @@ import UIKit
     private var windowSize: CGFloat = 0
     private var renderAheadOffset: CGFloat = 0
     private var enableInstrumentation = false
+    private var enableAutoLayoutInfo = false
     private var disableAutoLayout = false
+    private var preservedIndex = -1
+    private var autoLayoutId = -1
 
     /// Tracks where the last pixel is drawn in the overall
     private var lastMaxBoundOverall: CGFloat = 0
@@ -50,9 +76,14 @@ import UIKit
     /// Tracks where first pixel is drawn in the visible window
     private var lastMinBound: CGFloat = 0
 
+<<<<<<< HEAD
     override public func layoutSubviews() {
         fixLayout()
+=======
+    override func layoutSubviews() {
+>>>>>>> patch/master
         super.layoutSubviews()
+        fixLayout()
 
         guard enableInstrumentation, let scrollView = getScrollView() else { return }
 
@@ -110,6 +141,10 @@ import UIKit
             .sorted(by: { $0.index < $1.index })
         clearGaps(for: cellContainers)
         fixFooter()
+
+	if enableAutoLayoutInfo {
+            emitAutoLayout(for: cellContainers)
+	}
     }
 
     /// Checks for overlaps or gaps between adjacent items and then applies a correction.
@@ -120,7 +155,48 @@ import UIKit
         var maxBoundNextCell: CGFloat = 0
         let correctedScrollOffset = scrollOffset - (horizontal ? frame.minX : frame.minY)
         lastMaxBoundOverall = 0
-        cellContainers.indices.dropLast().forEach { index in
+
+        var preservedOffset: Int = 0
+        if preservedIndex > -1 {
+            if preservedIndex <= cellContainers[0].index {
+                preservedOffset = 0
+            }
+            else if preservedIndex >= cellContainers[cellContainers.count - 1].index {
+                preservedOffset = cellContainers.count - 1
+            }
+            else {
+                for index in 1..<(cellContainers.count - 1) {
+                    if cellContainers[index].index == preservedIndex {
+                        preservedOffset = index
+                        break
+                    }
+                }
+            }
+        }
+
+        if preservedOffset > 0 {
+            for index in (1..<preservedOffset + 1).reversed() {
+                let cellContainer = cellContainers[index]
+                let cellTop = cellContainer.frame.minY
+
+                let nextCell = cellContainers[index - 1]
+
+                // Only apply correction if the next cell is consecutive.
+                let isNextCellConsecutive = cellContainer.index == nextCell.index + 1
+
+                if isNextCellConsecutive {
+                    nextCell.frame.origin.y = cellTop - nextCell.frame.height
+                }
+            }
+            // this implementation essentially ignores visibility; this will cause onBlankAreaEvent of preserveVisiblePosition
+            // to be inconsistent with flash list without preserveVisiblePosition
+            minBound = cellContainers[0].frame.minY
+            maxBoundNextCell = cellContainers[preservedOffset].frame.maxY
+
+            updateLastMaxBoundOverall(currentCell: cellContainers[0], nextCell: cellContainers[preservedOffset])
+        }
+
+        for index in preservedOffset..<(cellContainers.count - 1) {
             let cellContainer = cellContainers[index]
             let cellTop = cellContainer.frame.minY
             let cellBottom = cellContainer.frame.maxY
@@ -150,12 +226,35 @@ import UIKit
 			)
 
             guard
+<<<<<<< HEAD
                 isCellVisible || isNextCellVisible
+=======
+                (preservedIndex > -1) ||
+                isWithinBounds(
+                    cellContainer,
+                    scrollOffset: correctedScrollOffset,
+                    renderAheadOffset: renderAheadOffset,
+                    windowSize: windowSize,
+                    isHorizontal: horizontal
+                )
+>>>>>>> patch/master
             else {
                 updateLastMaxBoundOverall(currentCell: cellContainer, nextCell: nextCell)
-                return
+                continue
             }
+<<<<<<< HEAD
            
+=======
+            let isNextCellVisible =
+                (preservedIndex > -1) ||
+                isWithinBounds(
+                    nextCell,
+                    scrollOffset: correctedScrollOffset,
+                    renderAheadOffset: renderAheadOffset,
+                    windowSize: windowSize,
+                    isHorizontal: horizontal
+                )
+>>>>>>> patch/master
 
             if horizontal {
                 maxBound = max(maxBound, cellRight)
@@ -227,6 +326,7 @@ import UIKit
     }
 
     /// It's important to avoid correcting views outside the render window. An item that isn't being recycled might still remain in the view tree. If views outside get considered then gaps between unused items will cause algorithm to fail.
+    /// However, when the preservedIndex is in effect, isWithinBounds should not be considered. The preserveVisiblePosition algorithm works fine regardless of bounds; conversely, if only the items within bounds are considered, since the scrollOffset here can be badly out of date, overlapped items may be shown; if items are excluded by isWithinBounds, incorrect offsets of items may also be passed in onAutoLayout events.
     func isWithinBounds(
         _ cellContainer: CellContainerComponentView,
         scrollOffset: CGFloat,
@@ -290,5 +390,16 @@ import UIKit
         #endif
 
         return parentSubviews?.first(where:{($0 as? CellContainerComponentView)?.index == -1})
+    }
+
+    private func emitAutoLayout(for cellContainers: [CellContainer]) {
+	let autoRenderedLayouts: [String: Any] = [
+	    "autoLayoutId": autoLayoutId,
+	    "layouts": cellContainers.map { 
+	        [ "key": $0.index, "y": $0.frame.origin.y, "height": $0.frame.height ]
+	    },
+	] 
+
+        onAutoLayout?(autoRenderedLayouts)
     }
 }

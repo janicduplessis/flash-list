@@ -1,3 +1,19 @@
+# @irisjae/flash-list
+
+## How to use
+
+This package is on npm. `@irisjae/flash-list` should be compatible with `@shopify/flash-list`, and one should be able to simply swap it out with this instead. Lists without the `preserveVisiblePosition` prop passed should essentially behave identically as `@shopify/flash-list`. Another method to swap `@shopify/flash-list` for this package without having to replace imports/requires is to replace the `@shopify/flash-list` version in `package.json` with `npm:@irisjae/flash-list@1.0.2`.
+
+This patch to FlashList primarily adds the `preserveVisiblePosition` prop to FlashList. This prop keeps the visible region of the list fixed regardless of changes in the height of items around the region and adding new data to the list.
+
+This patch adds the `preserveVisiblePosition`, `edgeVisibleThreshold`, `startEdgePreserved`, `shiftPreservedLayouts` props. `nonDeterministicMode` is automatically set to `"autolayout"` whenever `preserveVisiblePosition` is used. This patch also implements the relative layouting algorithm and the `onAutoLayout` events of `@irisjae/recyclerlistview`. For more information, please see [here](https://github.com/irisjae/recyclerlistview).
+
+---
+
+Beneath the following line one finds the original README unmodified.
+
+---
+
 ![FlashList Image](./FlashList.png)
 
 <div align="center">

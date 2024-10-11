@@ -365,6 +365,9 @@ class FlashList<T> extends React.PureComponent<
             ...this.props.overrideProps,
           }}
           forceNonDeterministicRendering
+          nonDeterministicMode={
+            this.props.preserveVisiblePosition ? "autolayout" : "normal"
+          }
           renderItemContainer={this.itemContainer}
           renderContentContainer={this.container}
           onEndReached={this.onEndReached}
@@ -798,21 +801,34 @@ class FlashList<T> extends React.PureComponent<
     const listSize = this.rlvRef?.getRenderedSize();
 
     if (layout && listSize) {
-      const itemOffset = this.props.horizontal ? layout.x : layout.y;
-      const fixedDimension = this.props.horizontal
-        ? listSize.width
-        : listSize.height;
-      const itemSize = this.props.horizontal ? layout.width : layout.height;
-      const scrollOffset =
-        Math.max(
-          0,
-          itemOffset - (params.viewPosition ?? 0) * (fixedDimension - itemSize)
-        ) - (params.viewOffset ?? 0);
+      const getScrollCoords = () => {
+          const itemOffset = this.props.horizontal ? layout.x : layout.y;
+          const fixedDimension = this.props.horizontal
+            ? listSize.width
+            : listSize.height;
+          const itemSize = this.props.horizontal ? layout.width : layout.height;
+          const scrollOffset =
+            Math.max(
+              0,
+              itemOffset - (params.viewPosition ?? 0) * (fixedDimension - itemSize)
+            ) - (params.viewOffset ?? 0);
+          return { x: scrollOffset, y: scrollOffset };
+      };
+      const { x, y } = getScrollCoords();
       this.rlvRef?.scrollToOffset(
-        scrollOffset,
-        scrollOffset,
+        x,
+        y,
         Boolean(params.animated),
-        true
+        true,
+        // the calculated offset may be wrong if the height estimate of the item is wrong. if viewPosition is 1 after rounding,
+        // we align it by the following item instead, which is not affected by the height estimate of the item in question
+        params.index + (
+          (params.viewPosition ?? 0 >= 0.5) &&
+            params.index !== (this.props.data?.length ?? -1) - 1
+          ? 1
+          : 0
+        ),
+        getScrollCoords
       );
     }
   }

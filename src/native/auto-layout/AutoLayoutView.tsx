@@ -2,9 +2,13 @@ import React, { useEffect, ReactNode } from "react";
 import { LayoutChangeEvent } from "react-native";
 
 import AutoLayoutViewNativeComponent from "./AutoLayoutViewNativeComponent";
-import { OnBlankAreaEvent } from "./AutoLayoutViewNativeComponentProps";
+import {
+  OnBlankAreaEvent,
+  OnAutoLayoutEvent,
+} from "./AutoLayoutViewNativeComponentProps";
 
 export type BlankAreaEventHandler = (blankAreaEvent: BlankAreaEvent) => void;
+export type OnAutoLayoutHandler = (rawEvent: OnAutoLayoutEvent) => void;
 const listeners: BlankAreaEventHandler[] = [];
 
 export const useOnNativeBlankAreaEvents = (
@@ -27,11 +31,18 @@ export interface BlankAreaEvent {
 export interface AutoLayoutViewProps {
   children?: ReactNode;
   onBlankAreaEvent?: BlankAreaEventHandler;
+  onAutoLayout?: OnAutoLayoutHandler;
   onLayout?: (event: LayoutChangeEvent) => void;
+  innerRef?: any;
   disableAutoLayout?: boolean;
+  enableAutoLayoutInfo?: boolean;
+  autoLayoutId?: number;
+  preservedIndex?: number;
 }
 
 class AutoLayoutView extends React.Component<AutoLayoutViewProps> {
+  private _renderId: number = 0x00000000;
+
   private onBlankAreaEventCallback = ({
     nativeEvent,
   }: OnBlankAreaEvent): void => {
@@ -55,14 +66,26 @@ class AutoLayoutView extends React.Component<AutoLayoutViewProps> {
   }
 
   render() {
+    if (!this.props.disableAutoLayout &&
+      this.props.preservedIndex !== undefined &&
+      this.props.preservedIndex > -1) {
+      this._renderId = (this._renderId + 1) & 0xFFFFFFFF;
+    }
+
     return (
       <AutoLayoutViewNativeComponent
         {...this.props}
+        ref={this.props.innerRef}
         onBlankAreaEvent={this.onBlankAreaEventCallback}
         enableInstrumentation={
           listeners.length !== 0 || Boolean(this.props.onBlankAreaEvent)
         }
+        autoLayoutId={this.props.autoLayoutId}
+        onAutoLayout={this.props.onAutoLayout || (() => {})}
+        enableAutoLayoutInfo={Boolean(this.props.onAutoLayout)}
         disableAutoLayout={this.props.disableAutoLayout}
+        preservedIndex={this.props.preservedIndex}
+	renderId={this._renderId}
       >
         {this.props.children}
       </AutoLayoutViewNativeComponent>
