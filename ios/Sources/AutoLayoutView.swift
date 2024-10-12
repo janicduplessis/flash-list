@@ -8,9 +8,13 @@ import UIKit
     #if RCT_NEW_ARCH_ENABLED
     @objc public var onBlankAreaEventHandler: ((CGFloat, CGFloat) -> Void)?
     #endif
-    
+
     @objc(onBlankAreaEvent)
     var onBlankAreaEvent: RCTDirectEventBlock?
+
+    #if RCT_NEW_ARCH_ENABLED
+    @objc public var onAutoLayoutHandler: (([String: Any]) -> Void)?
+    #endif
 
     @objc(onAutoLayout)
     var onAutoLayout: RCTDirectEventBlock?
@@ -35,28 +39,27 @@ import UIKit
         self.enableInstrumentation = enableInstrumentation
     }
 
-<<<<<<< HEAD
-    @objc public func setDisableAutoLayout(_ disableAutoLayout: Bool) {
-=======
-    @objc func setEnableAutoLayoutInfo(_ enableAutoLayoutInfo: Bool) {
+    @objc public func setEnableAutoLayoutInfo(_ enableAutoLayoutInfo: Bool) {
         self.enableAutoLayoutInfo = enableAutoLayoutInfo
     }
 
-    @objc func setDisableAutoLayout(_ disableAutoLayout: Bool) {
->>>>>>> patch/master
+    @objc public func setDisableAutoLayout(_ disableAutoLayout: Bool) {
         self.disableAutoLayout = disableAutoLayout
     }
 
-    @objc func setAutoLayoutId(_ autoLayoutId: Int) {
+    @objc public func setAutoLayoutId(_ autoLayoutId: Int) {
         self.autoLayoutId = autoLayoutId
     }
 
-    @objc func setPreservedIndex(_ preservedIndex: Int) {
+    @objc public func setPreservedIndex(_ preservedIndex: Int) {
         self.preservedIndex = preservedIndex
     }
 
-    @objc func setRenderId(_ renderId: Int) {
-	setNeedsLayout()
+    @objc public func setRenderId(_ renderId: Int) {
+        if (self.renderId != renderId) {
+            self.renderId = renderId
+            setNeedsLayout()
+        }
     }
 
     private var horizontal = false
@@ -68,6 +71,7 @@ import UIKit
     private var disableAutoLayout = false
     private var preservedIndex = -1
     private var autoLayoutId = -1
+    private var renderId = -1
 
     /// Tracks where the last pixel is drawn in the overall
     private var lastMaxBoundOverall: CGFloat = 0
@@ -76,12 +80,7 @@ import UIKit
     /// Tracks where first pixel is drawn in the visible window
     private var lastMinBound: CGFloat = 0
 
-<<<<<<< HEAD
     override public func layoutSubviews() {
-        fixLayout()
-=======
-    override func layoutSubviews() {
->>>>>>> patch/master
         super.layoutSubviews()
         fixLayout()
 
@@ -103,7 +102,7 @@ import UIKit
             distanceFromWindowStart: distanceFromWindowStart,
             distanceFromWindowEnd: distanceFromWindowEnd
         )
-        
+
         #if RCT_NEW_ARCH_ENABLED
         onBlankAreaEventHandler?(blankOffsetStart, blankOffsetEnd)
         #else
@@ -142,9 +141,9 @@ import UIKit
         clearGaps(for: cellContainers)
         fixFooter()
 
-	if enableAutoLayoutInfo {
+        if enableAutoLayoutInfo {
             emitAutoLayout(for: cellContainers)
-	}
+        }
     }
 
     /// Checks for overlaps or gaps between adjacent items and then applies a correction.
@@ -207,54 +206,30 @@ import UIKit
             let nextCellTop = nextCell.frame.minY
             let nextCellLeft = nextCell.frame.minX
 
-			// Only apply correction if the next cell is consecutive.
-			let isNextCellConsecutive = nextCell.index == cellContainer.index + 1
-			
-			let isCellVisible = isWithinBounds(
-				cellContainer,
-				scrollOffset: correctedScrollOffset,
-				renderAheadOffset: renderAheadOffset,
-				windowSize: windowSize,
-				isHorizontal: horizontal
-			)
-			let isNextCellVisible = isWithinBounds(
-				nextCell,
-				scrollOffset: correctedScrollOffset,
-				renderAheadOffset: renderAheadOffset,
-				windowSize: windowSize,
-				isHorizontal: horizontal
-			)
+            // Only apply correction if the next cell is consecutive.
+            let isNextCellConsecutive = nextCell.index == cellContainer.index + 1
+
+            let isCellVisible = preservedIndex > -1 || isWithinBounds(
+              cellContainer,
+              scrollOffset: correctedScrollOffset,
+              renderAheadOffset: renderAheadOffset,
+              windowSize: windowSize,
+              isHorizontal: horizontal
+            )
+            let isNextCellVisible = preservedIndex > -1 || isWithinBounds(
+              nextCell,
+              scrollOffset: correctedScrollOffset,
+              renderAheadOffset: renderAheadOffset,
+              windowSize: windowSize,
+              isHorizontal: horizontal
+            )
 
             guard
-<<<<<<< HEAD
                 isCellVisible || isNextCellVisible
-=======
-                (preservedIndex > -1) ||
-                isWithinBounds(
-                    cellContainer,
-                    scrollOffset: correctedScrollOffset,
-                    renderAheadOffset: renderAheadOffset,
-                    windowSize: windowSize,
-                    isHorizontal: horizontal
-                )
->>>>>>> patch/master
             else {
                 updateLastMaxBoundOverall(currentCell: cellContainer, nextCell: nextCell)
                 continue
             }
-<<<<<<< HEAD
-           
-=======
-            let isNextCellVisible =
-                (preservedIndex > -1) ||
-                isWithinBounds(
-                    nextCell,
-                    scrollOffset: correctedScrollOffset,
-                    renderAheadOffset: renderAheadOffset,
-                    windowSize: windowSize,
-                    isHorizontal: horizontal
-                )
->>>>>>> patch/master
 
             if horizontal {
                 maxBound = max(maxBound, cellRight)
@@ -392,14 +367,18 @@ import UIKit
         return parentSubviews?.first(where:{($0 as? CellContainerComponentView)?.index == -1})
     }
 
-    private func emitAutoLayout(for cellContainers: [CellContainer]) {
-	let autoRenderedLayouts: [String: Any] = [
-	    "autoLayoutId": autoLayoutId,
-	    "layouts": cellContainers.map { 
-	        [ "key": $0.index, "y": $0.frame.origin.y, "height": $0.frame.height ]
-	    },
-	] 
+    private func emitAutoLayout(for cellContainers: [CellContainerComponentView]) {
+        let autoRenderedLayouts: [String: Any] = [
+            "autoLayoutId": autoLayoutId,
+            "layouts": cellContainers.map {
+                [ "key": $0.index, "y": $0.frame.origin.y, "height": $0.frame.height ]
+            },
+        ]
 
+        #if RCT_NEW_ARCH_ENABLED
+        onAutoLayoutHandler?(autoRenderedLayouts)
+        #else
         onAutoLayout?(autoRenderedLayouts)
+        #endif
     }
 }

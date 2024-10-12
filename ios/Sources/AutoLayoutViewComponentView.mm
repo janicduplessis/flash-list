@@ -45,6 +45,27 @@ using namespace facebook::react;
         });
       }
     };
+
+    _autoLayoutView.onAutoLayoutHandler = ^(NSDictionary<NSString *,id> * _Nonnull event) {
+      AutoLayoutViewComponentView *strongSelf = weakSelf;
+      if (strongSelf != nullptr && strongSelf->_eventEmitter != nullptr) {
+        NSArray *eventLayouts = event[@"layouts"];
+        std::vector<facebook::react::AutoLayoutViewEventEmitter::OnAutoLayoutLayouts> layouts;
+        layouts.reserve(eventLayouts.count);
+        for (id layout : eventLayouts) {
+          layouts.push_back({
+            .key = [layout[@"key"] intValue],
+            .y = [layout[@"y"] doubleValue],
+            .height = [layout[@"height"] doubleValue],
+          });
+        }
+        std::dynamic_pointer_cast<const facebook::react::AutoLayoutViewEventEmitter>(strongSelf->_eventEmitter)
+        ->onAutoLayout({
+          .autoLayoutId = [event[@"autoLayoutId"] intValue],
+          .layouts = layouts,
+        });
+      }
+    };
   }
 
   return self;
@@ -77,6 +98,10 @@ using namespace facebook::react;
     [_autoLayoutView setRenderAheadOffset:newProps.renderAheadOffset];
     [_autoLayoutView setEnableInstrumentation:newProps.enableInstrumentation];
     [_autoLayoutView setDisableAutoLayout:newProps.disableAutoLayout];
+    [_autoLayoutView setEnableAutoLayoutInfo:newProps.enableAutoLayoutInfo];
+    [_autoLayoutView setAutoLayoutId:newProps.autoLayoutId];
+    [_autoLayoutView setPreservedIndex:newProps.preservedIndex];
+    [_autoLayoutView setRenderId:newProps.renderId];
 
     [super updateProps:props oldProps:oldProps];
 }
